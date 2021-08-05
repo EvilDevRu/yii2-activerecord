@@ -1,0 +1,23 @@
+{
+  "name": "evildev/yii2-activerecord",
+  "description": "",
+  "keywords": [
+  ],
+  "type": "yii2-extension",
+  "license": "BSD-3-Clause",
+  "require": {
+    "php": "~8.0",
+    "ext-json": "*"
+  },
+  "authors": [
+    {
+      "name": "Dmitriy Yurchenko",
+      "email": "evildev@evildev.ru"
+    }
+  ],
+  "autoload": {
+    "psr-4": {
+      "evildev\\activerecord\\": "src"
+    }
+  }
+}
