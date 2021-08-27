@@ -14,18 +14,42 @@ use yii\db\Expression;
 use yii\db\Schema;
 use yii\helpers\ArrayHelper;
 use yii\helpers\StringHelper;
+use yii\web\ForbiddenHttpException;
 
 /**
  * Свойства модели:
  *
  * Магические свойства:
- * @property string $oneError
- * @property string $permissionPostfix
- * @property bool $isCanDelete
- * @property bool $isCanUpdate
+ * @property string $oneError Вернет единствунную одинку из всего списка.
+ * @property string $permissionPostfix Постфикс прав пользователя.
+ * @property bool $isCanDelete Если можно удалить модель.
+ * @property bool $isCanSoftDelete Если можно мягко удалить модель.
+ * @property bool $isCanUpdate Если можно отредактировать модель.
  */
 class ActiveRecord extends BaseActiveRecord
 {
+    /**
+     * @return string[]
+     */
+    protected function errorMessages(): array
+    {
+        return [
+            'delete' => 'Вам не разрешено удалять.',
+            'softdelete' => 'Вам не разрешено удалять',
+        ];
+    }
+
+    /**
+     * Вернет массив связей с другими моделями.
+     * Заполняется вручную и нужен для проверки жесткого удаления модели.
+     * Оставьте пустым, если модель можно удалить без учета связных данных.
+     * @return array
+     */
+    public function relationList(): array
+    {
+        return [];
+    }
+
     /**
      * Вернет названия колонок по их типу.
      * @param string|array $type
@@ -147,6 +171,7 @@ class ActiveRecord extends BaseActiveRecord
     {
         $stringColumns = array_keys(static::getColumnsByType([Schema::TYPE_STRING, Schema::TYPE_TEXT]));
         $dateTimeColumns = array_keys(static::getColumnsByType(Schema::TYPE_DATETIME));
+        $dateColumns = array_keys(static::getColumnsByType(Schema::TYPE_DATE));
         return array_merge(parent::rules(), [
             [$this->xssAttributes(), 'filter', 'filter' => '\yii\helpers\HtmlPurifier::process'],
             [$stringColumns, 'filter', 'filter' => 'trim', 'skipOnArray' => true],
@@ -154,6 +179,14 @@ class ActiveRecord extends BaseActiveRecord
                 $dateTimeColumns,
                 'datetime',
                 'format' => 'php:Y-m-d H:i:s',
+                'when' => function (self $model, string $attribute) {
+                    return !($model->$attribute instanceof Expression);
+                }
+            ],
+            [
+                $dateColumns,
+                'datetime',
+                'format' => 'php:Y-m-d',
                 'when' => function (self $model, string $attribute) {
                     return !($model->$attribute instanceof Expression);
                 }
@@ -183,10 +216,42 @@ class ActiveRecord extends BaseActiveRecord
     /**
      * Вернет true, если модель можно удалить.
      * @return bool
+     * @throws ForbiddenHttpException
      */
-    public function getIsCanDelete(): bool
+    public function getIsCanDelete(bool $isMute = false): bool
     {
-        return $this->userCan('delete') && !$this->isNewRecord;
+        if (!$this->userCan('delete') && !$isMute) {
+            throw new ForbiddenHttpException($this->errorMessages()['delete']);
+        }
+
+        if (!$this->userCan('delete') && !$this->isNewRecord) {
+            return false;
+        }
+
+        //  Проверяем связные данные если они есть.
+        foreach ($this->relationList() as $name) {
+            if ($this->$name) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Вернет true, если модель можно мягко удалить.
+     * @param bool $isMute
+     * @return bool
+     * @throws ForbiddenHttpException
+     */
+    public function getIsCanSoftDelete(bool $isMute = false): bool
+    {
+        if (!$this->userCan('softdelete') && !$isMute) {
+            throw new ForbiddenHttpException($this->errorMessages()['softdelete']);
+        }
+
+        return $this->userCan('softdelete')
+            && !$this->isNewRecord;
     }
 
     /**

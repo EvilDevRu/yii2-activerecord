@@ -26,6 +26,16 @@ trait SoftDeleteTrait
     }
 
     /**
+     * @return array
+     */
+    public function scenarios(): array
+    {
+        return array_merge(parent::scenarios(), [
+            'softdelete' => ['is_delete'],
+        ]);
+    }
+
+    /**
      * Поставит флаг, что модель удалена.
      * @return false|int
      */
@@ -34,6 +44,7 @@ trait SoftDeleteTrait
         if ($this->hasProperty($this->softDeleteAttribute)) {
             $attributeName = $this->softDeleteAttribute;
             $this->$attributeName = true;
+            $this->scenario = 'softdelete';
             return $this->update(true, [$attributeName]);
         }
 
