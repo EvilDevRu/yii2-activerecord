@@ -8,6 +8,7 @@ namespace evildev\activerecord;
 use DateTime;
 use DateTimeZone;
 use Exception;
+use ReflectionClass;
 use Yii;
 use yii\db\ActiveRecord as BaseActiveRecord;
 use yii\db\Expression;
@@ -18,9 +19,8 @@ use yii\web\ForbiddenHttpException;
 
 /**
  * Свойства модели:
- *
  * Магические свойства:
- * @property string $oneError Вернет единствунную одинку из всего списка.
+ * @property string $oneError Вернет единственную ошибку из всего списка.
  * @property string $permissionPostfix Постфикс прав пользователя.
  * @property bool $isCanDelete Если можно удалить модель.
  * @property bool $isCanSoftDelete Если можно мягко удалить модель.
@@ -79,8 +79,8 @@ class ActiveRecord extends BaseActiveRecord
 
     /**
      * Вернет отформатированную дату с учетом часового пояса.
-     * @param string $attribute название аттрибута с датой.
-     * @param string $format формат возвращаемой даты Y.m.d.
+     * @param string $attribute Название аттрибута с датой.
+     * @param string $format Формат возвращаемой даты Y.m.d.
      * @return string
      */
     public function dateFormat(string $attribute, string $format = 'php:Y.m.d H:i:s'): string
@@ -172,7 +172,17 @@ class ActiveRecord extends BaseActiveRecord
         $stringColumns = array_keys(static::getColumnsByType([Schema::TYPE_STRING, Schema::TYPE_TEXT]));
         $dateTimeColumns = array_keys(static::getColumnsByType(Schema::TYPE_DATETIME));
         $dateColumns = array_keys(static::getColumnsByType(Schema::TYPE_DATE));
-        return array_merge(parent::rules(), [
+
+        //  Правила из Trait.
+        $class = new ReflectionClass(get_called_class());
+        $traitRules = [];
+        foreach ($class->getMethods() as $method) {
+            if (str_contains($method->name, 'RulesTrait')) {
+                $traitRules = array_merge($traitRules, $this->{$method->name}());
+            }
+        }
+
+        return array_merge(parent::rules(), $traitRules, [
             [$this->xssAttributes(), 'filter', 'filter' => '\yii\helpers\HtmlPurifier::process'],
             [$stringColumns, 'filter', 'filter' => 'trim', 'skipOnArray' => true],
             [
@@ -192,6 +202,23 @@ class ActiveRecord extends BaseActiveRecord
                 }
             ],
         ]);
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function behaviors(): array
+    {
+        //  Поведения из Trait.
+        $class = new ReflectionClass(get_called_class());
+        $traitBehaviors = [];
+        foreach ($class->getMethods() as $method) {
+            if (str_contains($method->name, 'BehaviorsTrait')) {
+                $traitBehaviors = array_merge($traitBehaviors, $this->{$method->name}());
+            }
+        }
+
+        return array_merge(parent::behaviors(), $traitBehaviors);
     }
 
     /**
@@ -255,7 +282,7 @@ class ActiveRecord extends BaseActiveRecord
     }
 
     /**
-     * Вернет true, если текущему пользователю разрещено действие $permission с учетом текущего контроллера.
+     * Вернет true, если текущему пользователю разрешено действие $permission с учетом текущего контроллера.
      * @param string $permission
      * @return bool
      */
@@ -302,7 +329,7 @@ class ActiveRecord extends BaseActiveRecord
     {
         $array = explode('\\', static::class);
         preg_match_all('/((?:^|[A-Z])[a-z]+)/', end($array), $array);
-        $array = array_map('strtolower', reset($array));
+        $array = array_map('strtolower', (array)reset($array));
 
         return StringHelper::mb_ucfirst(implode('-', $array));
     }

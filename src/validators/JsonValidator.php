@@ -10,7 +10,6 @@ use yii\validators\Validator;
 /**
  * Валидатор для JSON полей.
  * Свойства модели:
- *
  * Магические свойства:
  */
 class JsonValidator extends Validator

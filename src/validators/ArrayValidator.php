@@ -10,7 +10,6 @@ use yii\validators\Validator;
 /**
  * Валидатор для array полей.
  * Свойства модели:
- *
  * Магические свойства:
  */
 class ArrayValidator extends Validator

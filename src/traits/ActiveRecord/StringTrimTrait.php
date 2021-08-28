@@ -18,11 +18,11 @@ trait StringTrimTrait
     /**
      * @return array
      */
-    public function rules(): array
+    public function stringTrimRulesTrait(): array
     {
         $stringColumns = array_keys(static::getColumnsByType([Schema::TYPE_STRING, Schema::TYPE_TEXT]));
-        return array_merge(parent::rules(), [
+        return [
             [$stringColumns, 'filter', 'filter' => 'trim'],
-        ]);
+        ];
     }
 }

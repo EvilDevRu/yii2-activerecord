@@ -5,12 +5,13 @@
 
 namespace evildev\activerecord\traits\ActiveRecord;
 
+use evildev\activerecord\ActiveRecord;
+use yii\behaviors\TimestampBehavior;
 use yii\db\Expression;
 
 /**
  * Добавляет автоматическое обновление даты создания и даты обновления модели.
  * Свойства модели:
- *
  * Магические свойства:
  */
 trait DateTimeTrait
@@ -19,21 +20,19 @@ trait DateTimeTrait
     public ?string $dateUpdateAttribute = 'date_update';
 
     /**
-     * @return mixed
+     * @return array<array>
      */
-    public function beforeValidate()
+    public function dateTimeBehaviorsTrait(): array
     {
-        //  Обновляем date_create и date_update, если те заданы (через behavior не получится т.к. динамически надо).
-        if ($this->dateCreateAttribute !== null && $this->isNewRecord) {
-            $attribute = $this->dateCreateAttribute;
-            $this->$attribute = new Expression('NOW()');
-        }
-
-        if ($this->dateUpdateAttribute !== null) {
-            $attribute = $this->dateUpdateAttribute;
-            $this->$attribute = new Expression('NOW()');
-        }
-
-        return parent::beforeValidate();
+        return [
+            [
+                'class' => TimestampBehavior::class,
+                'attributes' => [
+                    ActiveRecord::EVENT_BEFORE_INSERT => [$this->dateCreateAttribute, $this->dateUpdateAttribute],
+                    ActiveRecord::EVENT_BEFORE_UPDATE => [$this->dateUpdateAttribute],
+                ],
+                'value' => new Expression('NOW()'),
+            ],
+        ];
     }
 }

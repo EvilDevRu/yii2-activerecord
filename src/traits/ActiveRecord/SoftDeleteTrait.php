@@ -16,23 +16,13 @@ trait SoftDeleteTrait
     public ?string $softDeleteAttribute = 'is_delete';
 
     /**
-     * @return array
+     * @return array<array>
      */
-    public function rules(): array
+    public function softDeleteRulesTrait(): array
     {
-        return array_merge(parent::rules(), [
+        return [
             [$this->softDeleteAttribute, 'boolean'],
-        ]);
-    }
-
-    /**
-     * @return array
-     */
-    public function scenarios(): array
-    {
-        return array_merge(parent::scenarios(), [
-            'softdelete' => ['is_delete'],
-        ]);
+        ];
     }
 
     /**
