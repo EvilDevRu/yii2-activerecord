@@ -7,9 +7,9 @@ namespace evildev\activerecord;
 
 use DateTime;
 use DateTimeZone;
-use Exception;
 use ReflectionClass;
 use Yii;
+use yii\base\Exception;
 use yii\db\ActiveRecord as BaseActiveRecord;
 use yii\db\Expression;
 use yii\db\Schema;
@@ -29,21 +29,25 @@ use yii\web\ForbiddenHttpException;
 class ActiveRecord extends BaseActiveRecord
 {
     /**
-     * @return string[]
+     * @return array<string, string>
      */
     protected function errorMessages(): array
     {
         return [
+            'create' => 'Вам не разрешено создание.',
+            'update' => 'Вам не разрешено редактирование.',
             'delete' => 'Вам не разрешено удалять.',
-            'softdelete' => 'Вам не разрешено удалять',
+            'softdelete' => 'Вам не разрешено удалять.',
+            'restore' => 'Вам не разрешено восстанавливать.',
         ];
     }
 
     /**
      * Вернет массив связей с другими моделями.
      * Заполняется вручную и нужен для проверки жесткого удаления модели.
+     * Например, если есть метод getAcceptance, то заполнить надо ['acceptance'].
      * Оставьте пустым, если модель можно удалить без учета связных данных.
-     * @return array
+     * @return array<string>
      */
     public function relationList(): array
     {
@@ -242,7 +246,9 @@ class ActiveRecord extends BaseActiveRecord
 
     /**
      * Вернет true, если модель можно удалить.
+     * @param bool $isMute
      * @return bool
+     * @throws Exception
      * @throws ForbiddenHttpException
      */
     public function getIsCanDelete(bool $isMute = false): bool
@@ -257,6 +263,10 @@ class ActiveRecord extends BaseActiveRecord
 
         //  Проверяем связные данные если они есть.
         foreach ($this->relationList() as $name) {
+            if (!$this->hasProperty($name)) {
+                throw new Exception('Не верно указана связь ' . $name . ' в модели.');
+            }
+
             if ($this->$name) {
                 return false;
             }
@@ -266,19 +276,27 @@ class ActiveRecord extends BaseActiveRecord
     }
 
     /**
-     * Вернет true, если модель можно мягко удалить.
+     * Вернет true, если модель можно создать.
      * @param bool $isMute
      * @return bool
      * @throws ForbiddenHttpException
      */
-    public function getIsCanSoftDelete(bool $isMute = false): bool
+    public function getIsCanCreate(bool $isMute = false): bool
     {
-        if (!$this->userCan('softdelete') && !$isMute) {
-            throw new ForbiddenHttpException($this->errorMessages()['softdelete']);
+        if (!$this->userCan('create') && !$isMute) {
+            throw new ForbiddenHttpException($this->errorMessages()['create']);
         }
 
-        return $this->userCan('softdelete')
-            && !$this->isNewRecord;
+        return $this->userCan('create')
+            && $this->isNewRecord;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function beforeDelete()
+    {
+        return $this->isCanDelete && parent::beforeDelete();
     }
 
     /**
@@ -292,11 +310,15 @@ class ActiveRecord extends BaseActiveRecord
     }
 
     /**
-     * Вернет true, если модель можно удалить.
+     * Вернет true, если модель можно отредактировать.
      * @return bool
      */
-    public function getIsCanUpdate(): bool
+    public function getIsCanUpdate(bool $isMute = false): bool
     {
+        if (!$this->userCan('update') && !$isMute) {
+            throw new ForbiddenHttpException($this->errorMessages()['update']);
+        }
+
         return $this->userCan('update') && !$this->isNewRecord;
     }
 
