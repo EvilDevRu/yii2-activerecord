@@ -19,16 +19,19 @@ trait SoftDeleteTrait
      * Добавит колонки в таблицу.
      * @param string $tableName
      */
-    public function addColumns(string $tableName)
+    public function addSoftDeleteColumns(string $tableName)
     {
         $this->addColumn($tableName, $this->softDeleteAttribute, $this->boolean()->defaultValue(false));
+
+        $tableName = str_replace(['{', '%', '}'], '', $tableName);
+        $this->createIndex('idx_' . mb_strtolower($tableName) . '_is_delete', $tableName, ['is_delete']);
     }
 
     /**
      * Удалит колонки из таблицы.
      * @param string $tableName
      */
-    public function dropColumns(string $tableName)
+    public function dropSoftDeleteColumns(string $tableName)
     {
         $this->dropColumn($tableName, $this->softDeleteAttribute);
     }

@@ -20,6 +20,11 @@ trait SoftDeleteTrait
     public ?string $softDeleteAttribute = 'is_delete';
 
     /**
+     * @var bool Флаг отображения архивных записей. Используется в Search модели.
+     */
+    public bool $isArchive = false;
+
+    /**
      * @return array<array>
      */
     public function softDeleteRulesTrait(): array

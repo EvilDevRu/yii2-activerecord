@@ -30,4 +30,14 @@ trait SoftDeleteTrait
     {
         return $this->andWhere([$this->softDeleteAttribute => false]);
     }
+
+    /**
+     * @return $this
+     */
+    public function archive(bool $isArchive): static
+    {
+        return $isArchive
+            ? $this->deleted()
+            : $this->notDeleted();
+    }
 }
