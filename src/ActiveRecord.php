@@ -28,6 +28,8 @@ use yii\web\ForbiddenHttpException;
  */
 class ActiveRecord extends BaseActiveRecord
 {
+    protected string $modelLogClass = '';
+
     /**
      * @return array<string, string>
      */
@@ -144,7 +146,30 @@ class ActiveRecord extends BaseActiveRecord
                 Yii::$app->formatter->timeZone);
         }
 
-        //  TODO: Сохранение логов.
+        //  Сохранение логов.
+        if (class_exists($this->modelLogClass)) {
+            $before = [];
+            $after = [];
+
+            /** @var ActiveLog $log */
+            $log = new ($this->modelLogClass)();
+            $log->model_id = $this->id;
+            foreach ($changedAttributes as $name => $value) {
+                if ($this->$name != $value && !in_array($name, $this->dateTimeAttributes())) {
+                    $before[$name] = $value;
+                    $after[$name] = $this->getAttribute($name);
+                }
+            }
+
+            if (!empty($before) && !empty($after)) {
+                $log->data_before = (object)$before;
+                $log->data_after = (object)$after;
+
+                if (!$log->save()) {
+                    throw new \yii\db\Exception('Не удалось сохранить лог. ' . $log->oneError);
+                }
+            }
+        }
 
         parent::afterSave($insert, $changedAttributes);
     }

@@ -28,8 +28,11 @@ trait DateTimeTrait
             [
                 'class' => TimestampBehavior::class,
                 'attributes' => [
-                    ActiveRecord::EVENT_BEFORE_INSERT => [$this->dateCreateAttribute, $this->dateUpdateAttribute],
-                    ActiveRecord::EVENT_BEFORE_UPDATE => [$this->dateUpdateAttribute],
+                    ActiveRecord::EVENT_BEFORE_INSERT => array_filter([
+                        $this->dateCreateAttribute,
+                        $this->dateUpdateAttribute
+                    ]),
+                    ActiveRecord::EVENT_BEFORE_UPDATE => array_filter([$this->dateUpdateAttribute]),
                 ],
                 'value' => new Expression('NOW()'),
             ],
