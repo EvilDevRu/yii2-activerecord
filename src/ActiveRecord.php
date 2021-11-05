@@ -16,12 +16,15 @@ use yii\db\Schema;
 use yii\helpers\ArrayHelper;
 use yii\helpers\StringHelper;
 use yii\web\ForbiddenHttpException;
+use yii\web\HttpException;
 
 /**
  * Свойства модели:
+ *
  * Магические свойства:
  * @property string $oneError Вернет единственную ошибку из всего списка.
  * @property string $permissionPostfix Постфикс прав пользователя.
+ * @property bool $relationListDeleteIgnore Флаг игнорирования зависимостей для isCanDelete.
  * @property bool $isCanDelete Если можно удалить модель.
  * @property bool $isCanSoftDelete Если можно мягко удалить модель.
  * @property bool $isCanUpdate Если можно отредактировать модель.
@@ -89,9 +92,11 @@ class ActiveRecord extends BaseActiveRecord
      * @param string $format Формат возвращаемой даты Y.m.d.
      * @return string
      */
-    public function dateFormat(string $attribute, string $format = 'php:Y.m.d H:i:s'): string
+    public function dateFormat(string $attribute, string $format = 'php:Y.m.d H:i:s'): ?string
     {
-        return Yii::$app->formatter->asDatetime($this->getUTC($attribute), $format);
+        return $this->getUTC($attribute)
+            ? Yii::$app->formatter->asDatetime($this->getUTC($attribute), $format)
+            : null;
     }
 
     /**
@@ -101,6 +106,10 @@ class ActiveRecord extends BaseActiveRecord
      */
     public function getUTC(string $attribute): string
     {
+        if (!$this->$attribute) {
+            return '';
+        }
+
         return $this->convertToServerDate($this->$attribute,
                 Yii::$app->formatter->timeZone,
                 Yii::$app->formatter->defaultTimeZone) ?? '';
@@ -287,17 +296,29 @@ class ActiveRecord extends BaseActiveRecord
         }
 
         //  Проверяем связные данные если они есть.
-        foreach ($this->relationList() as $name) {
-            if (!$this->hasProperty($name)) {
-                throw new Exception('Не верно указана связь ' . $name . ' в модели.');
-            }
+        if (!$this->relationListDeleteIgnore) {
+            foreach ($this->relationList() as $name) {
+                if (!$this->hasProperty($name)) {
+                    throw new Exception('Не верно указана связь ' . $name . ' в модели.');
+                }
 
-            if ($this->$name) {
-                return false;
+                if ($this->$name) {
+                    return false;
+                }
             }
         }
 
         return true;
+    }
+
+    /**
+     * Если вернет true, то модель можно удалить игнорируя relationList().
+     * В этом случае будут удалены все связные данные, если они указаны.
+     * @return bool
+     */
+    public function getRelationListDeleteIgnore(): bool
+    {
+        return false;
     }
 
     /**
@@ -321,7 +342,25 @@ class ActiveRecord extends BaseActiveRecord
      */
     public function beforeDelete()
     {
-        return $this->isCanDelete && parent::beforeDelete();
+        if (!$this->isCanDelete || !parent::beforeDelete()) {
+            return false;
+        }
+
+        //  Удаляем зависимости.
+        Yii::$app->transaction->execute(function () {
+            foreach (static::relationList() as $relation) {
+                foreach ($this->$relation as $item) {
+                    if (!$item->delete()) {
+                        throw new HttpException(500,
+                            'Не удалось удалить зависимые данные.');
+                    }
+                }
+            }
+        }, function (\Exception $e) {
+            $this->addError($e->getMessage());
+        });
+
+        return !$this->hasErrors();
     }
 
     /**
