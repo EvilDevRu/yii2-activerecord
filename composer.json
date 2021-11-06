@@ -1,10 +1,10 @@
 {
   "name": "evildev/yii2-activerecord",
-  "description": "",
-  "keywords": [
-  ],
+  "version": "0.1",
+  "description": "Надстройка над Yii2 ActiveRecord\n\n",
+  "homepage": "https://github.com/EvilDevRu/yii2-activerecord",
+  "license": "MIT",
   "type": "yii2-extension",
-  "license": "BSD-3-Clause",
   "require": {
     "php": "~8.0",
     "ext-json": "*"
