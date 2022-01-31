@@ -419,4 +419,17 @@ class ActiveRecord extends BaseActiveRecord
 
         return StringHelper::mb_ucfirst(implode('-', $array));
     }
+
+    /**
+     * Попытается найти модель по $attributes, если не найдет, то создаст новую с аттрибутами $attributes.
+     * @param array $attributes
+     * @return static
+     */
+    public static function findOrCreate(array $attributes): self
+    {
+        $model = static::find()->where($attributes)->one() ?? new static();
+        $model->setAttributes($attributes);
+        $model->save();
+        return $model;
+    }
 }
