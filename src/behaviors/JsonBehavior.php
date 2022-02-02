@@ -6,12 +6,12 @@
 namespace evildev\activerecord\behaviors;
 
 use evildev\activerecord\ActiveRecord;
+use Exception;
 use yii\base\Behavior;
 use yii\base\Event;
-use yii\helpers\Json;
 
 /**
- * Поведение преобразующее json в массив и обратно.
+ * Поведение сохраняющее и восстанавливающее json данные т.к. напрямую с ними работать не получится.
  */
 class JsonBehavior extends Behavior
 {
@@ -41,7 +41,11 @@ class JsonBehavior extends Behavior
         /** @var ActiveRecord $model */
         $model = $event->sender;
         foreach ($this->attributes as $arrayColumn => $jsonColumn) {
-            $model->$arrayColumn = Json::decode($model->getAttribute($jsonColumn)) ?? [];
+            try {
+                $model->$arrayColumn = $model->getAttribute($jsonColumn);
+            } catch (Exception $e) {
+                $model->$arrayColumn = null;
+            }
         }
     }
 
@@ -54,7 +58,7 @@ class JsonBehavior extends Behavior
         /** @var ActiveRecord $model */
         $model = $event->sender;
         foreach ($this->attributes as $arrayColumn => $jsonColumn) {
-            $model->setAttribute($jsonColumn, Json::encode($model->$arrayColumn));
+            $model->setAttribute($jsonColumn, $model->$arrayColumn);
         }
     }
 }
