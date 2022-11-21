@@ -1,3 +1,5 @@
+Do not use this! This is bad code!
+
 Yii2 ActiveRecord
 ------------
 Эта надстройка позволит сэкономить время и тонну дублирующегося кода.<br>
